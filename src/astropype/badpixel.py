@@ -8,7 +8,8 @@ from astropy.io import fits
 from scipy import ndimage
 
 from .decorator import timeit
-from .funcs import init_pool, remove_bad_pixel_func
+from .pool import init_pool
+from .funcs import remove_bad_pixel_func
 from .pixelmath import clip_distribution, invert_mask, replace_nans
 
 
@@ -35,7 +36,7 @@ def create_bad_pixel_mask(
 def remove_bad_pixels(
     __files: list[Path],
     __mask_file: Path,
-    remove: bool = True,
+    remove: bool = False,
     prefix: str = "n",
     value: Any = None,
     value_func: str = None,

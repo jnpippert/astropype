@@ -1,4 +1,4 @@
-import os
+import shutil
 from pathlib import Path
 from typing import Any
 from astropy.io import fits
@@ -33,7 +33,7 @@ def contains_substring(string: str, contents: list) -> bool:
     if isinstance(contents, str):
         contents = [contents]
     if not isinstance(contents, list):
-        TypeError(f"'contents' of non-list type {type(contents)}.")
+        raise TypeError(f"'contents' of non-list type {type(contents)}.")
     pos = 0
     for content in contents:
         if (index := string.find(content)) < pos:
@@ -82,9 +82,9 @@ def get_filepaths(path: Path, identifier: str = "*") -> list:
         If path is not of type Path or str.
     """
     if isinstance(path, str):
-        path = Path(str)
+        path = Path(path)
     if not isinstance(path, Path):
-        TypeError(f"'path' of non-Path type {type(path)}.")
+        raise TypeError(f"'path' of non-Path type {type(path)}.")
     sub_strings = identifier.split("*")
     prefix = sub_strings[0]
     suffix = sub_strings[-1]
@@ -120,12 +120,12 @@ def copy_files(files: list, destination: Path) -> None:
     if not isinstance(files, list):
         files = [files]
     if not isinstance(files, list):
-        TypeError(f"'files' of non-list type {type(files)}.")
+        raise TypeError(f"'files' of non-list type {type(files)}.")
     print(f"[INFO] Copying files to {destination} ...")
     for file in (bar:=tqdm(files)):
         bar.set_description(f"{file}")
         bar.refresh()
-        os.system(f"cp {Path(file)} {destination}")
+        shutil.copy(Path(file), destination)
 
 def remove_files(files: list) -> None:
     """
@@ -144,12 +144,12 @@ def remove_files(files: list) -> None:
     if not isinstance(files, list):
         files = [files]
     if not isinstance(files, list):
-        TypeError(f"'files' of non-list type {type(files)}.")
+        raise TypeError(f"'files' of non-list type {type(files)}.")
     print(f"[INFO] Removing files ...")
     for file in (bar:=tqdm(files)):
         bar.set_description(f"{file}")
         bar.refresh()
-        os.system(f"rm -f {Path(file)}")
+        Path(file).unlink(missing_ok=True)
 
 def rename_files(path: Path, __date: str, __flatdate: str):
     files = [f for f in path.iterdir() if f.is_file()]
@@ -172,7 +172,7 @@ def rename_files(path: Path, __date: str, __flatdate: str):
             )
         bar.set_description(f"{file.name} -> {new_filename}")
         bar.refresh()
-        os.system(f"mv {file} {file.parent.joinpath(new_filename)}")
+        file.rename(file.parent.joinpath(new_filename))
 
 def sort_files_by_obsdate(files : list[Path]) -> list[Path]:
     scheme = {"path" : "str",

@@ -22,7 +22,7 @@ class Master:
     ):
         self._files = files
         self.data = None
-        self._header = MASTERHEADER
+        self._header = MASTERHEADER.copy()
         self._method = method
         self._k = k
         self._q = q
@@ -88,7 +88,7 @@ class MasterDark(Master):
             self._header["TEMPERATUR"] = temperature
             self.temperature = temperature
             # self._check_temperature()
-        self._header = MASTERHEADER
+        self._header = MASTERHEADER.copy()
         self._header["FILTER"] = "D"
         self._type = "dark"
         if self._dont_create:
@@ -117,7 +117,7 @@ class MasterFlat(Master):
         q: int = None,
     ):
         super().__init__(files=files, method=method, k=k, q=q)
-        self._header = MASTERHEADER
+        self._header = MASTERHEADER.copy()
         self._header["FILTER"] = fits.getval(files[0], "FILTER")
         self._header["EXPTIME"] = "-"
         self._type = "flat"

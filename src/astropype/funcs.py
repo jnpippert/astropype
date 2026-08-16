@@ -1,20 +1,15 @@
 from astropy.io import fits
 from pathlib import Path
-from multiprocessing import Pool
-from typing import Any
-from astropy.io.fits import Header
-from numpy import ndarray
 import numpy as np
-import os
-from astropype.pixelmath import (
+from .pixelmath import (
     replace_nans,
     clip_distribution,
     invert_mask,
     circle_mask,
+    fit_sky_model,
 )
 
 __all__ = [
-    "init_pool",
     "subtract_func",
     "divide_func",
     "rotate_func",
@@ -28,69 +23,9 @@ __all__ = [
 ]
 
 
-def init_pool(files: list, kwargs: dict) -> list:
-    if isinstance(files, (Path, str)):
-        files = [files]
-    with Pool(processes=2) as pool:
-        result = pool.map(
-            pool_func,
-            [
-                (
-                    file,
-                    kwargs,
-                )
-                for file in files
-            ],
-        )
-    return result
-
-
-def pool_func(args: list):
-    """
-    The general method to apply multiprocessing in the data reduction.
-    Used as the 'func' parameter in multiprocessing.Pool.map().
-
-    Generally ``args`` holds the pooling function and keyword arguments.
-    The ``kwargs`` always contain the refernence to the reduction function
-    and the prefix of the new filename. All other ``kwargs`` are specific to
-    the reduction step and reduction function.
-
-    >>> with Pool() as pool:
-    >>>     result = pool.map(pool_func, {'file' : filepath,
-    >>>                                   'prefix' : prefix ,
-    >>>                                   'other' : value})
-
-    Parameters
-    ----------
-    args : list
-        A list of arguments. First item holds the file path.
-        The second item is a dictionary of keyword arguments which are used to carry
-        further parameters such as the new filename prefix, the reduction func.
-
-    Returns
-    -------
-    filename : Path
-        Path of the new reduced/modified file.
-    """
-    file, kwargs = args
-    if isinstance(file, str):
-        file = Path(file)
-    print(f"\t{file}")
-    new_filename = f"{str(file).replace(file.name,kwargs['prefix']+file.name)}"
-    data, header = kwargs["func"](file, kwargs)
-    fits.writeto(new_filename, data, header, overwrite=True)
-    
-    try:
-        os.remove(file) if kwargs["remove"] else None
-        print(f"\t\t... {file.name} removed")
-    except FileNotFoundError:
-        print(f"[INFO] No file or directory: ... {file.name}")
-    
-    return new_filename
-
-
 def subtract_func(file: Path, kwargs: dict) -> tuple:
     data, header = fits.getdata(file, header=True)
+    data = data.astype(np.float32)
     header["HISTORY"] = "----------"
     header["HISTORY"] = f"subtracted {kwargs['reference_file']}"
     header["HISTORY"] = f"added file prefix: {kwargs['prefix']}"
@@ -100,6 +35,7 @@ def subtract_func(file: Path, kwargs: dict) -> tuple:
 
 def divide_func(file: Path, kwargs: dict) -> tuple:
     data, header = fits.getdata(file, header=True)
+    data = data.astype(np.float32)
     header["HISTORY"] = "----------"
     header["HISTORY"] = f"divided {kwargs['reference_file']}"
     header["HISTORY"] = f"added file prefix: {kwargs['prefix']}"
@@ -111,10 +47,10 @@ def rotate_func(file: Path, kwargs: dict) -> tuple:
     data, header = fits.getdata(file, header=True)
     if header["TRACK"] in ["1"]:
         data = np.rot90(data, 2)
-        header["CD_1_1"] = -header["CD1_1"]
-        header["CD_1_2"] = -header["CD1_2"]
-        header["CD_2_1"] = -header["CD2_1"]
-        header["CD_2_2"] = -header["CD2_2"]
+        header["CD1_1"] = -header["CD1_1"]
+        header["CD1_2"] = -header["CD1_2"]
+        header["CD2_1"] = -header["CD2_1"]
+        header["CD2_2"] = -header["CD2_2"]
         header["HISTORY"] = f"rotated image by 180 degree"
     else:
         header["HISTORY"] = "rotated image by 0 degree"
@@ -124,9 +60,11 @@ def rotate_func(file: Path, kwargs: dict) -> tuple:
 
 def crop_func(file: Path, kwargs: dict) -> tuple:
     data, header = fits.getdata(file, header=True)
-    data = data[0:6388, 24:]
-    header["HISTORY"] = f"cropped image [0:6388, 24:]"
-    header["HISTORY"] = "new size: (6388,9576)"
+    rows = kwargs["crop_rows"]
+    cols = kwargs["crop_cols"]
+    data = data[rows[0]:rows[1], cols[0]:cols[1]]
+    header["HISTORY"] = f"cropped image [{rows[0]}:{rows[1]}, {cols[0]}:{cols[1]}]"
+    header["HISTORY"] = f"new size: {data.shape}"
     header["HISTORY"] = f"added file prefix: {kwargs['prefix']}"
     return data, header
 
@@ -134,7 +72,9 @@ def crop_func(file: Path, kwargs: dict) -> tuple:
 def overscan_func(file: Path, kwargs: dict) -> tuple:
     data, header = fits.getdata(file, header=True)
     data = data.astype(np.float32)
-    overscan = np.median(data[0:6388, 0:10])
+    rows = kwargs["overscan_rows"]
+    cols = kwargs["overscan_cols"]
+    overscan = np.median(data[rows[0]:rows[1], cols[0]:cols[1]])
     data -= overscan
     header["HISTORY"] = f"subtracted overscan offset"
     header["HISTORY"] = f"offset value: {overscan}"
@@ -162,8 +102,6 @@ def scale_func(file: Path, kwargs: dict) -> tuple:
 
 
 def starmask_func(file: Path, kwargs: dict) -> tuple:
-    from astropype.sky import fit_sky_model
-
     data, header = fits.getdata(file, header=True)
     sky = fit_sky_model(data)
     residual = data - sky

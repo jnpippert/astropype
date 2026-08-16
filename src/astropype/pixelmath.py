@@ -1,8 +1,43 @@
 import numpy as np
 from typing import Any, Literal
+from astropy.stats import SigmaClip
+from photutils.background import Background2D, MedianBackground
 
 
-__all__ = ["invert_mask", "circle_mask", "clip_distribution", "replace_nans"]
+__all__ = [
+    "invert_mask",
+    "circle_mask",
+    "clip_distribution",
+    "replace_nans",
+    "fit_sky_model",
+]
+
+
+def fit_sky_model(data: np.ndarray) -> np.ndarray:
+    """
+    Fits a 2D background model to a 2D image.
+
+    Parameters
+    ----------
+    data : np.ndarray
+        The data to fit.
+
+    Raises
+    ------
+    TypeError
+        If ``data`` is not a numpy.ndarray.
+    """
+    if not isinstance(data, np.ndarray):
+        raise TypeError(f"'data' of non-numpy.ndarray type {type(data)}.")
+    sigma_clip_fn = SigmaClip(sigma=3, cenfunc="median")
+    background = Background2D(
+        data,
+        (10, 10),
+        filter_size=(7, 7),
+        sigma_clip=sigma_clip_fn,
+        bkg_estimator=MedianBackground(),
+    )
+    return background.background
 
 
 def invert_mask(mask: np.ndarray):
@@ -25,7 +60,7 @@ def invert_mask(mask: np.ndarray):
         If ``mask`` is not of type numpy.ndarray.
     """
     if not isinstance(mask, np.ndarray):
-        TypeError(f"'mask' of non-numpy.ndarray type {type(mask)}.")
+        raise TypeError(f"'mask' of non-numpy.ndarray type {type(mask)}.")
     return ~mask.astype(bool)
 
 
@@ -94,7 +129,7 @@ def clip_distribution(
         If a false value for ``nan_policy`` is given.
     """
     if not isinstance(distribution, np.ndarray):
-        TypeError(f"'distribution' of non-numpy.ndarray type {type(distribution)}.")
+        raise TypeError(f"'distribution' of non-numpy.ndarray type {type(distribution)}.")
     if not isinstance(med, float):
         med = np.median(distribution)
     if not isinstance(std, float):

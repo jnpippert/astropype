@@ -1,0 +1,15 @@
+name: QHY600M Pro
+sensor: Sony IMX455
+pixel_size: 3.76
+bit_depth: null
+gain: null
+rgb: false
+size:
+  rows: 6422
+  cols: 9600
+overscan:
+  rows: [0, 6388]
+  cols: [0, 10]
+crop:
+  rows: [0, 6388]
+  cols: [24, null]

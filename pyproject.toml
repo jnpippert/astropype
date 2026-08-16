@@ -17,7 +17,15 @@ classifiers = [
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
 ]
-dependencies = []
+dependencies = [
+    "numpy",
+    "scipy",
+    "astropy",
+    "photutils",
+    "pandas",
+    "tqdm",
+    "pyyaml",
+]
 
 [project.optional-dependencies]
 dev = [
