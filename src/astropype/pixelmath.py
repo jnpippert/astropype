@@ -2,6 +2,7 @@ import numpy as np
 from typing import Any, Literal
 from astropy.stats import SigmaClip
 from photutils.background import Background2D, MedianBackground
+from .logger import logger
 
 
 __all__ = [
@@ -194,5 +195,5 @@ def replace_nans(
                 array[y - radius : y + radius + 1, x - radius : x + radius + 1]
             )
         return array[radius:-radius, radius:-radius]
-    print("[WARNING] no replacing method applied. Returning unchanged array.")
+    logger.warning("no replacing method applied. Returning unchanged array.")
     return array

@@ -4,6 +4,7 @@ from typing import Any
 from astropy.io import fits
 from tqdm import tqdm
 import pandas as pd
+from .logger import logger
 __all__ = ["contains_substring", "get_filepaths", "copy_files", "rename_files", "remove_files"]
 
 
@@ -121,7 +122,7 @@ def copy_files(files: list, destination: Path) -> None:
         files = [files]
     if not isinstance(files, list):
         raise TypeError(f"'files' of non-list type {type(files)}.")
-    print(f"[INFO] Copying files to {destination} ...")
+    logger.info(f"Copying files to {destination} ...")
     for file in (bar:=tqdm(files)):
         bar.set_description(f"{file}")
         bar.refresh()
@@ -145,7 +146,7 @@ def remove_files(files: list) -> None:
         files = [files]
     if not isinstance(files, list):
         raise TypeError(f"'files' of non-list type {type(files)}.")
-    print(f"[INFO] Removing files ...")
+    logger.info(f"Removing files ...")
     for file in (bar:=tqdm(files)):
         bar.set_description(f"{file}")
         bar.refresh()
@@ -181,6 +182,6 @@ def sort_files_by_obsdate(files : list[Path]) -> list[Path]:
     df = pd.DataFrame(columns=scheme.keys()).astype(scheme)
     for f in files:
         df.loc[len(df.index)] = [f.parent, f.name, pd.Timestamp(fits.getval(f,"DATE-OBS"))]
-    print(df)
+    logger.debug(f"\n{df}")
     df = df.sort_values(by=["date"],ascending=True)
     return [Path(row["path"]).joinpath(row["filename"]) for index,row in df.iterrows()]

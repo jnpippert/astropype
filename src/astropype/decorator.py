@@ -1,5 +1,6 @@
 import time
 from functools import wraps
+from .logger import logger
 
 __all__ = ["timeit"]
 
@@ -11,7 +12,7 @@ def timeit(func=None):
             start_time = time.perf_counter()
             result = func(*args, **kwargs)
             end_time = time.perf_counter()
-            print(f"\tfinished after {round(end_time - start_time,2)} seconds")
+            logger.info(f"\tfinished after {round(end_time - start_time,2)} seconds")
             return result
 
         return wrapper_timeit

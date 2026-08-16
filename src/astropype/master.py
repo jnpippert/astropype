@@ -1,5 +1,6 @@
 from astropy.io import fits
 import numpy as np
+from .logger import logger
 from .sky import create_masterflat_bad_pixel_mask
 from .pixelmath import replace_nans
 from photutils.background import Background2D, MedianBackground
@@ -37,7 +38,7 @@ class Master:
             raise NotImplementedError
         for file in self._files:
             data.append(fits.getdata(file))
-        print(
+        logger.info(
             f"computing master{self._type} using {self._method} combination method..."
         )
         if self._method == "mean":
@@ -50,7 +51,7 @@ class Master:
         self._header["OBJECT"] = f"master{self._type}"
         if self.data is None:
             raise TypeError(f"master data of non-array type {type(self.data)}")
-        print(f"writing master{self._type} to file: '{filename}' ...")
+        logger.info(f"writing master{self._type} to file: '{filename}' ...")
         fits.writeto(
             filename=filename, data=self.data, header=self._header, overwrite=overwrite
         )
@@ -98,13 +99,13 @@ class MasterDark(Master):
         i = 0
         while i < len(self._files):
             if (val := fits.getval(file := self._files[i], "EXPTIME")) != self.exptime:
-                print(f"{file} removed with wrong exposure time of {val}s")
+                logger.info(f"{file} removed with wrong exposure time of {val}s")
                 self._files.remove(file)
                 continue
             i += 1
         if len(self._files) == 0:
-            print("[WARNING] No dark frame with matchng exposure time!")
-            print("[WARNING] Subtracting zero.")
+            logger.warning("No dark frame with matchng exposure time!")
+            logger.warning("Subtracting zero.")
             self._dont_create = False
 
 
@@ -129,8 +130,8 @@ class MasterFlat(Master):
         num = len(np.where(bad_pixel_mask == 0)[0])
         bad_pixel_mask[bad_pixel_mask == 0] = np.nan
         self.data *= bad_pixel_mask
-        print(f"removing {num} bad (Nan) pixels from file:")
+        logger.info(f"removing {num} bad (Nan) pixels from file:")
         self.data = replace_nans(self.data.copy(), value_func="nearest")
         cen_val = np.nanmax(ndimage.median_filter(self.data.copy(), size=2))
-        print(f"normalizing masteflat by dividing through {cen_val}")
+        logger.info(f"normalizing masteflat by dividing through {cen_val}")
         self.data /= cen_val
